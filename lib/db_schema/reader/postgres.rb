@@ -31,8 +31,12 @@ SELECT extname
 
         def read_tables(connection)
           connection.tables.map do |table_name|
-            Table.new(connection, table_name).read
+            read_table(table_name, connection)
           end
+        end
+
+        def read_table(table_name, connection)
+          Table.new(connection, table_name).read
         end
 
         def read_enums(connection)
