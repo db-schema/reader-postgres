@@ -24,7 +24,41 @@ $ gem install db_schema-reader-postgres
 
 ## Usage
 
-TODO: Write usage instructions here
+First you need a Sequel connection object with `:pg_enum` and `:pg_array`
+Sequel extensions enabled; once you have that object just pass it to
+the `.read_schema` method to get full database schema definition:
+
+``` ruby
+connection = Sequel.connect(adapter: 'postgres', database: 'db_schema_test').tap do |db|
+  db.extension :pg_enum
+  db.extension :pg_array
+end
+
+DbSchema::Reader::Postgres.read_schema(connection)
+# => #<DbSchema::Definitions::Schema ...>
+```
+
+Other useful methods are `.read_tables`, `.read_table`, `.read_enums` & `.read_extensions`;
+they return definitions of respective parts of the database schema:
+
+``` ruby
+DbSchema::Reader::Postgres.read_tables(connection)
+# => [#<DbSchema::Definitions::Table ...>, #<DbSchema::Definitions::Table ...>, ...]
+
+DbSchema::Reader::Postgres.read_table(:users, connection)
+# => #<DbSchema::Definitions::Table name=:users ...>
+
+DbSchema::Reader::Postgres.read_enums(connection)
+# => [#<DbSchema::Definitions::Enum ...>, #<DbSchema::Definitions::Enum ...>, ...]
+
+DbSchema::Reader::Postgres.read_extensions(connection)
+# => [#<DbSchema::Definitions::Extension ...>, #<DbSchema::Definitions::Extension ...>, ...]
+```
+
+DbSchema::Reader::Postgres emits objects of classes from
+[DbSchema::Definitions](https://github.com/db-schema/definitions).
+Read [here](https://github.com/db-schema/core/wiki/Schema-analysis-DSL)
+how to analyze the schema and all of it's parts.
 
 ## Development
 
