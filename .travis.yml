@@ -5,3 +5,9 @@ rvm:
   - 2.3.5
   - 2.4.2
 before_install: gem install bundler -v 1.16.0
+services:
+  - postgresql
+addons:
+  postgresql: 9.6
+before_script:
+  - psql -c 'CREATE DATABASE db_schema_test;' -U postgres
