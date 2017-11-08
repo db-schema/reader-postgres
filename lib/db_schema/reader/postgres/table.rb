@@ -93,7 +93,7 @@ GROUP BY index_id;
         def read
           primary_key_name = connection.primary_key(table_name)
 
-          fields = connection[COLUMN_NAMES_QUERY, table_name.to_s].map do |column_data|
+          fields = columns_data.map do |column_data|
             build_field(column_data, primary_key: column_data[:name] == primary_key_name)
           end
 
@@ -122,8 +122,12 @@ GROUP BY index_id;
         end
 
       private
+        def columns_data
+          @columns_data ||= connection[COLUMN_NAMES_QUERY, table_name.to_s]
+        end
+
         def indexes_data
-          column_names = connection[COLUMN_NAMES_QUERY, table_name.to_s].reduce({}) do |names, column|
+          column_names = columns_data.reduce({}) do |names, column|
             names.merge(column[:pos] => column[:name].to_sym)
           end
 
