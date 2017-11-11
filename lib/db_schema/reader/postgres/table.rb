@@ -1,6 +1,6 @@
 module DbSchema
   module Reader
-    module Postgres
+    class Postgres
       class Table
         DEFAULT_VALUE = /\A(
           ('(?<date>\d{4}-\d{2}-\d{2})'::date)

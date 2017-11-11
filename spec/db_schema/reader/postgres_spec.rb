@@ -8,10 +8,12 @@ RSpec.describe DbSchema::Reader::Postgres do
     end
   end
 
+  subject { DbSchema::Reader::Postgres.new(connection) }
+
   describe '.read_schema' do
     context 'on an empty database' do
       it 'returns an empty schema' do
-        expect(subject.read_schema(connection)).to eq(DbSchema::Definitions::Schema.new)
+        expect(subject.read_schema).to eq(DbSchema::Definitions::Schema.new)
       end
     end
 
@@ -72,7 +74,7 @@ RSpec.describe DbSchema::Reader::Postgres do
         end
       end
 
-      let(:schema) { subject.read_schema(connection) }
+      let(:schema) { subject.read_schema }
 
       it 'reads field information' do
         users = schema.table(:users)

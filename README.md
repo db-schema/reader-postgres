@@ -26,7 +26,7 @@ $ gem install db_schema-reader-postgres
 
 First you need a Sequel connection object with `:pg_enum` and `:pg_array`
 Sequel extensions enabled; once you have that object just pass it to
-the `.read_schema` method to get full database schema definition:
+`DbSchema::Reader::Postgres.new` to construct the reader:
 
 ``` ruby
 connection = Sequel.connect(adapter: 'postgres', database: 'db_schema_test').tap do |db|
@@ -34,24 +34,30 @@ connection = Sequel.connect(adapter: 'postgres', database: 'db_schema_test').tap
   db.extension :pg_array
 end
 
-DbSchema::Reader::Postgres.read_schema(connection)
+reader = DbSchema::Reader::Postgres.new(connection)
+```
+
+You can call `#read_schema` to get the full database schema definition:
+
+``` ruby
+reader.read_schema
 # => #<DbSchema::Definitions::Schema ...>
 ```
 
-Other useful methods are `.read_tables`, `.read_table`, `.read_enums` & `.read_extensions`;
+Other useful methods are `#read_tables`, `#read_table`, `#read_enums` & `#read_extensions`;
 they return definitions of respective parts of the database schema:
 
 ``` ruby
-DbSchema::Reader::Postgres.read_tables(connection)
+reader.read_tables
 # => [#<DbSchema::Definitions::Table ...>, #<DbSchema::Definitions::Table ...>, ...]
 
-DbSchema::Reader::Postgres.read_table(:users, connection)
+reader.read_table(:users)
 # => #<DbSchema::Definitions::Table name=:users ...>
 
-DbSchema::Reader::Postgres.read_enums(connection)
+reader.read_enums
 # => [#<DbSchema::Definitions::Enum ...>, #<DbSchema::Definitions::Enum ...>, ...]
 
-DbSchema::Reader::Postgres.read_extensions(connection)
+reader.read_extensions
 # => [#<DbSchema::Definitions::Extension ...>, #<DbSchema::Definitions::Extension ...>, ...]
 ```
 
