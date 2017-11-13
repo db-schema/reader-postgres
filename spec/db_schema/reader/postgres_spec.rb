@@ -200,6 +200,7 @@ RSpec.describe DbSchema::Reader::Postgres do
       end
 
       it 'reads foreign keys' do
+        pending 'Adding schemas support'
         posts = schema.table(:posts)
 
         expect(posts.foreign_keys.count).to eq(2)
@@ -227,6 +228,39 @@ RSpec.describe DbSchema::Reader::Postgres do
       it 'reads extensions' do
         expect(schema.extensions.count).to eq(1)
         expect(schema).to have_extension(:hstore)
+      end
+
+      context 'with other schemas' do
+        before(:each) do
+          connection.create_schema(:statistics)
+
+          connection.create_table Sequel[:statistics][:daily] do
+            column :id,   :serial,  primary_key: true
+            column :hits, :integer, null: false
+            column :date, :date,    null: false, unique: true
+
+            constraint :positive_hits, 'hits > 0'
+          end
+        end
+
+        it 'returns tables from the other schema' do
+          expect(schema).to have_table(:daily)
+
+          table = schema.table(:daily)
+          expect(table.field(:id)).to be_primary_key
+          expect(table.field(:hits)).not_to be_null
+          expect(table.field(:hits).type).to eq(:integer)
+          expect(table.field(:date)).not_to be_null
+          expect(table.field(:date).type).to eq(:date)
+          expect(table).to have_unique_index_on(:date)
+          expect(table).to have_check(:positive_hits)
+          expect(table.check(:positive_hits).condition).to eq('hits > 0')
+        end
+
+        after(:each) do
+          connection.drop_table(Sequel[:statistics][:daily])
+          connection.drop_schema(:statistics)
+        end
       end
 
       after(:each) do

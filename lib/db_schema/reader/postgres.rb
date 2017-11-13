@@ -5,6 +5,14 @@ require_relative 'postgres/version'
 module DbSchema
   module Reader
     class Postgres
+      TABLE_NAMES_QUERY = <<-SQL.freeze
+SELECT t.table_schema AS schema,
+       t.table_name AS name
+  FROM information_schema.tables AS t
+ WHERE t.table_schema NOT IN ('pg_catalog', 'information_schema')
+   AND t.table_type = 'BASE TABLE';
+      SQL
+
       ENUMS_QUERY = <<-SQL.freeze
   SELECT t.typname AS name,
          array_agg(e.enumlabel ORDER BY e.enumsortorder) AS values
@@ -35,13 +43,13 @@ SELECT extname
       end
 
       def read_tables
-        connection.tables.map do |table_name|
-          read_table(table_name)
+        connection[TABLE_NAMES_QUERY].map do |table|
+          read_table(table[:name].to_sym, table[:schema].to_sym)
         end
       end
 
-      def read_table(table_name)
-        Table.new(connection, table_name).read
+      def read_table(table_name, schema)
+        Table.new(connection, table_name, schema).read
       end
 
       def read_enums

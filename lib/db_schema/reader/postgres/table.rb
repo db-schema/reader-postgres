@@ -37,17 +37,21 @@ LEFT JOIN information_schema.element_types AS e
       AND e.object_name = c.table_name
       AND e.object_type = 'TABLE'
       AND e.collection_type_identifier = c.dtd_identifier
-    WHERE c.table_schema = 'public'
+    WHERE c.table_schema = ?
       AND c.table_name = ?
         SQL
 
         CONSTRAINTS_QUERY = <<-SQL.freeze
 SELECT conname AS name,
        pg_get_expr(conbin, conrelid, true) AS condition
-  FROM pg_constraint, pg_class
- WHERE conrelid = pg_class.oid
-   AND relname = ?
-   AND contype = 'c'
+  FROM pg_constraint
+  JOIN pg_class
+    ON pg_class.oid = pg_constraint.conrelid
+  JOIN pg_namespace
+    ON pg_namespace.oid = pg_class.relnamespace
+ WHERE pg_class.relname = ?
+   AND pg_namespace.nspname = ?
+   AND pg_constraint.contype = 'c'
         SQL
 
         INDEXES_QUERY = <<-SQL.freeze
@@ -66,9 +70,13 @@ LEFT JOIN pg_am
     WHERE pg_class.oid = pg_index.indexrelid
       AND pg_class.oid IN (
      SELECT indexrelid
-       FROM pg_index, pg_class
+       FROM pg_index
+       JOIN pg_class
+         ON pg_class.oid = pg_index.indrelid
+  LEFT JOIN pg_namespace
+         ON pg_namespace.oid = pg_class.relnamespace
       WHERE pg_class.relname = ?
-        AND pg_class.oid = pg_index.indrelid
+        AND pg_namespace.nspname = ?
         AND indisprimary != 't'
 )
   GROUP BY name, column_positions, indisunique, index_options, condition, index_type, index_oid
@@ -83,15 +91,16 @@ LEFT JOIN pg_am
 GROUP BY index_id;
         SQL
 
-        attr_reader :connection, :table_name
+        attr_reader :connection, :table_name, :schema
 
-        def initialize(connection, table_name)
+        def initialize(connection, table_name, schema)
           @connection = connection
           @table_name = table_name
+          @schema     = schema
         end
 
         def read
-          primary_key_name = connection.primary_key(table_name)
+          primary_key_name = connection.primary_key(qualified_table_name)
 
           fields = columns_data.map do |column_data|
             build_field(column_data, primary_key: column_data[:name] == primary_key_name)
@@ -101,11 +110,11 @@ GROUP BY index_id;
             Definitions::Index.new(index_data)
           end.sort_by(&:name)
 
-          foreign_keys = connection.foreign_key_list(table_name).map do |foreign_key_data|
+          foreign_keys = connection.foreign_key_list(qualified_table_name).map do |foreign_key_data|
             build_foreign_key(foreign_key_data)
           end
 
-          checks = connection[CONSTRAINTS_QUERY, table_name.to_s].map do |check_data|
+          checks = connection[CONSTRAINTS_QUERY, table_name.to_s, schema.to_s].map do |check_data|
             Definitions::CheckConstraint.new(
               name:      check_data[:name].to_sym,
               condition: check_data[:condition]
@@ -122,8 +131,12 @@ GROUP BY index_id;
         end
 
       private
+        def qualified_table_name
+          Sequel[schema][table_name]
+        end
+
         def columns_data
-          @columns_data ||= connection[COLUMN_NAMES_QUERY, table_name.to_s]
+          @columns_data ||= connection[COLUMN_NAMES_QUERY, schema.to_s, table_name.to_s]
         end
 
         def indexes_data
@@ -131,7 +144,7 @@ GROUP BY index_id;
             names.merge(column[:pos] => column[:name].to_sym)
           end
 
-          indexes_data     = connection[INDEXES_QUERY, table_name.to_s].to_a
+          indexes_data     = connection[INDEXES_QUERY, table_name.to_s, schema.to_s].to_a
           expressions_data = index_expressions_data(indexes_data)
 
           indexes_data.map do |index|
