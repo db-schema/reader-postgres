@@ -87,7 +87,6 @@ RSpec.describe DbSchema::Reader::Postgres do
         posts = schema.table(:posts)
 
         expect(users.field(:id).type).to eq(:integer)
-        expect(users.field(:id)).to be_primary_key
 
         expect(users.field(:name).type).to eq(:varchar)
         expect(users.field(:name)).not_to be_null
@@ -150,7 +149,6 @@ RSpec.describe DbSchema::Reader::Postgres do
         expect(users.field(:previous_colors).default).to eq(:'ARRAY[]::rainbow[]')
 
         expect(posts.field(:id).type).to eq(:integer)
-        expect(posts.field(:id)).to be_primary_key
 
         expect(posts.field(:title).type).to eq(:varchar)
         expect(posts.field(:title)).to be_null
