@@ -72,6 +72,12 @@ RSpec.describe DbSchema::Reader::Postgres do
           foreign_key [:user_id], :users, on_delete: :set_null, deferrable: true
           foreign_key [:user_name], :users, key: [:name], name: :user_name_fkey, on_update: :cascade
         end
+
+        connection.create_table :points do
+          column :lat, :numeric, size: [6, 3]
+          column :lng, :numeric, size: [6, 3]
+          primary_key [:lat, :lng]
+        end
       end
 
       let(:schema) { subject.read_schema }
@@ -159,10 +165,16 @@ RSpec.describe DbSchema::Reader::Postgres do
       end
 
       it 'reads indexes' do
-        users = schema.table(:users)
-        posts = schema.table(:posts)
+        users  = schema.table(:users)
+        posts  = schema.table(:posts)
+        points = schema.table(:points)
 
-        expect(users.indexes.count).to eq(4)
+        expect(users.indexes.count).to eq(5)
+
+        expect(users.index(:users_pkey).columns).to eq([
+          DbSchema::Definitions::Index::TableField.new(:id)
+        ])
+        expect(users.index(:users_pkey)).to be_primary
 
         expect(users.index(:users_index).columns).to eq([
           DbSchema::Definitions::Index::TableField.new(:email),
@@ -185,11 +197,24 @@ RSpec.describe DbSchema::Reader::Postgres do
         ])
         expect(users.index(:users_name_index).type).to eq(:spgist)
 
-        expect(posts.indexes.count).to eq(1)
+        expect(posts.indexes.count).to eq(2)
+
+        expect(posts.index(:posts_pkey).columns).to eq([
+          DbSchema::Definitions::Index::TableField.new(:id)
+        ])
+        expect(posts.index(:posts_pkey)).to be_primary
+
         expect(posts.index(:posts_user_id_index).columns).to eq([
           DbSchema::Definitions::Index::TableField.new(:user_id)
         ])
         expect(posts.index(:posts_user_id_index)).not_to be_unique
+
+        expect(points.indexes.count).to eq(1)
+        expect(points.index(:points_pkey).columns).to eq([
+          DbSchema::Definitions::Index::TableField.new(:lat),
+          DbSchema::Definitions::Index::TableField.new(:lng)
+        ])
+        expect(points.index(:points_pkey)).to be_primary
       end
 
       it 'reads check constraints' do
@@ -230,6 +255,7 @@ RSpec.describe DbSchema::Reader::Postgres do
       end
 
       after(:each) do
+        connection.drop_table(:points)
         connection.drop_table(:posts)
         connection.drop_table(:users)
         connection.drop_enum(:rainbow)

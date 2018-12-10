@@ -53,6 +53,7 @@ SELECT conname AS name,
         INDEXES_QUERY = <<-SQL.freeze
    SELECT relname AS name,
           indkey AS column_positions,
+          indisprimary AS primary,
           indisunique AS unique,
           indoption AS index_options,
           pg_get_expr(indpred, indrelid, true) AS condition,
@@ -69,9 +70,8 @@ LEFT JOIN pg_am
        FROM pg_index, pg_class
       WHERE pg_class.relname = ?
         AND pg_class.oid = pg_index.indrelid
-        AND indisprimary != 't'
 )
-  GROUP BY name, column_positions, indisunique, index_options, condition, index_type, index_oid
+  GROUP BY name, column_positions, indisprimary, indisunique, index_options, condition, index_type, index_oid
         SQL
 
         EXPRESSION_INDEXES_QUERY = <<-SQL.freeze
@@ -162,6 +162,7 @@ GROUP BY index_id;
               name:      index[:name].to_sym,
               columns:   columns,
               unique:    index[:unique],
+              primary:   index[:primary],
               type:      index[:index_type].to_sym,
               condition: index[:condition]
             }
