@@ -78,15 +78,22 @@ RSpec.describe DbSchema::Reader::Postgres do
           column :lng, :numeric, size: [6, 3]
           primary_key [:lat, :lng]
         end
+
+        connection.create_table :numbers do
+          column :small,  :smallserial
+          column :medium, :serial
+          column :big,    :bigserial
+        end
       end
 
       let(:schema) { subject.read_schema }
 
       it 'reads field information' do
-        users = schema.table(:users)
-        posts = schema.table(:posts)
+        users   = schema.table(:users)
+        posts   = schema.table(:posts)
+        numbers = schema.table(:numbers)
 
-        expect(users.field(:id).type).to eq(:integer)
+        expect(users.field(:id).type).to eq(:serial)
 
         expect(users.field(:name).type).to eq(:varchar)
         expect(users.field(:name)).not_to be_null
@@ -160,6 +167,18 @@ RSpec.describe DbSchema::Reader::Postgres do
         expect(posts.field(:created_on).default).to eq(Date.new(2016, 4, 28))
 
         expect(posts.field(:created_at).type).to eq(:timetz)
+
+        expect(numbers.field(:small).type).to eq(:smallserial)
+        expect(numbers.field(:small)).to be_null
+        expect(numbers.field(:small).default).to be_nil
+
+        expect(numbers.field(:medium).type).to eq(:serial)
+        expect(numbers.field(:medium)).to be_null
+        expect(numbers.field(:medium).default).to be_nil
+
+        expect(numbers.field(:big).type).to eq(:bigserial)
+        expect(numbers.field(:big)).to be_null
+        expect(numbers.field(:big).default).to be_nil
       end
 
       it 'reads indexes' do
@@ -253,6 +272,7 @@ RSpec.describe DbSchema::Reader::Postgres do
       end
 
       after(:each) do
+        connection.drop_table(:numbers)
         connection.drop_table(:points)
         connection.drop_table(:posts)
         connection.drop_table(:users)

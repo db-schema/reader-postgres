@@ -2,6 +2,12 @@ module DbSchema
   module Reader
     class Postgres
       class Table
+        SERIAL_TYPES = {
+          smallint: :smallserial,
+          integer:  :serial,
+          bigint:   :bigserial
+        }.freeze
+
         DEFAULT_VALUE = /\A(
           ('(?<date>\d{4}-\d{2}-\d{2})'::date)
             |
@@ -205,22 +211,31 @@ GROUP BY index_id;
           nullable = (data[:null] != 'NO')
 
           unless data[:default].nil?
-            default = if match = DEFAULT_VALUE.match(data[:default])
-              if match[:date]
-                Date.parse(match[:date])
-              elsif match[:time]
-                Time.parse(match[:time])
-              elsif match[:string]
-                match[:string]
-              elsif match[:integer]
-                match[:integer].to_i
-              elsif match[:float]
-                match[:float].to_f
-              elsif match[:boolean]
-                match[:boolean] == 'true'
-              end
+            serial_type = SERIAL_TYPES[type]
+            serial_field_default = "nextval('#{table_name}_#{data[:name]}_seq'::regclass)"
+
+            if !serial_type.nil? && !nullable && data[:default] == serial_field_default
+              type     = serial_type
+              nullable = true
+              default  = nil
             else
-              data[:default].to_sym
+              default = if match = DEFAULT_VALUE.match(data[:default])
+                if match[:date]
+                  Date.parse(match[:date])
+                elsif match[:time]
+                  Time.parse(match[:time])
+                elsif match[:string]
+                  match[:string]
+                elsif match[:integer]
+                  match[:integer].to_i
+                elsif match[:float]
+                  match[:float].to_f
+                elsif match[:boolean]
+                  match[:boolean] == 'true'
+                end
+              else
+                data[:default].to_sym
+              end
             end
           end
 
