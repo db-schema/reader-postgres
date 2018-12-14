@@ -91,10 +91,8 @@ GROUP BY index_id;
         end
 
         def read
-          primary_key_name = connection.primary_key(table_name)
-
           fields = columns_data.map do |column_data|
-            build_field(column_data, primary_key: column_data[:name] == primary_key_name)
+            build_field(column_data)
           end
 
           indexes = indexes_data.map do |index_data|
@@ -198,7 +196,7 @@ GROUP BY index_id;
           end
         end
 
-        def build_field(data, primary_key: false)
+        def build_field(data)
           type = data[:type].to_sym.downcase
           if type == :'user-defined'
             type = data[:custom_type_name].to_sym
@@ -206,7 +204,7 @@ GROUP BY index_id;
 
           nullable = (data[:null] != 'NO')
 
-          unless primary_key || data[:default].nil?
+          unless data[:default].nil?
             default = if match = DEFAULT_VALUE.match(data[:default])
               if match[:date]
                 Date.parse(match[:date])
@@ -264,9 +262,8 @@ GROUP BY index_id;
           Definitions::Field.build(
             data[:name].to_sym,
             type,
-            primary_key: primary_key,
-            null:        nullable,
-            default:     default,
+            null:    nullable,
+            default: default,
             **options
           )
         end
