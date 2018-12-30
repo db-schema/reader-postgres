@@ -5,7 +5,7 @@ require_relative 'postgres/version'
 module DbSchema
   module Reader
     class Postgres
-      COLUMN_NAMES_QUERY = <<-SQL.freeze
+      COLUMNS_QUERY = <<-SQL.freeze
    SELECT c.table_name,
           c.column_name AS name,
           c.ordinal_position AS pos,
@@ -103,12 +103,8 @@ SELECT extname
 
       def read_tables
         connection.tables.map do |table_name|
-          read_table(table_name)
+          Table.new(connection, table_name).read
         end
-      end
-
-      def read_table(table_name)
-        Table.new(connection, table_name).read
       end
 
       def read_enums
@@ -120,6 +116,71 @@ SELECT extname
       def read_extensions
         connection[EXTENSIONS_QUERY].map do |extension_data|
           Definitions::Extension.new(extension_data[:extname].to_sym)
+        end
+      end
+
+    private
+      def columns_data
+        @columns_data ||= connection[COLUMNS_QUERY].to_a.group_by do |column|
+          column[:table_name]
+        end
+      end
+
+      def indexes_data
+        raw_data = connection[INDEXES_QUERY].map do |index_data|
+          index_data.merge(
+            column_positions: index_data[:column_positions].split(' ').map(&:to_i),
+            index_options:    index_data[:index_options].split(' ').map(&:to_i)
+          )
+        end
+
+        expressions_data = index_expressions_data(raw_data)
+
+        raw_data.map do |index_data|
+          columns = index_data[:column_positions].map do |position|
+            if position.zero?
+              expressions_data.fetch(index_data[:index_oid]).shift
+            else
+              columns_data.fetch(index_data[:table_name]).find do |column|
+                column[:pos] == position
+              end.fetch(:name).to_sym
+            end
+          end
+
+          index_data.delete(:index_oid)
+          index_data.delete(:column_positions)
+          index_data.merge(columns: columns)
+        end.group_by { |index| index[:table_name] }
+      end
+
+      def index_expressions_data(indexes_data)
+        all_positions, max_position = {}, 0
+
+        indexes_data.each do |index_data|
+          positions = index_data[:column_positions]
+          expression_positions = positions.each_index.select do |i|
+            positions[i].zero?
+          end
+
+          if expression_positions.any?
+            all_positions[index_data[:index_oid]] = expression_positions
+            max_position = [max_position, expression_positions.max].max
+          end
+        end
+
+        if all_positions.any?
+          connection[
+            EXPRESSION_INDEXES_QUERY,
+            Sequel.pg_array(all_positions.keys),
+            Sequel.pg_array((1..max_position.succ).to_a)
+          ].each_with_object({}) do |index_data, indexes_data|
+            index_id = index_data[:index_id]
+            expressions = all_positions[index_id].map { |pos| index_data[:definitions][pos] }
+
+            indexes_data[index_id] = expressions
+          end
+        else
+          {}
         end
       end
     end
