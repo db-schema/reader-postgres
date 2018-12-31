@@ -23,6 +23,12 @@ RSpec.describe DbSchema::Reader::Postgres do
 
         connection.run('CREATE EXTENSION hstore')
 
+        connection.create_table :points do
+          column :lat, :numeric, size: [6, 3]
+          column :lng, :numeric, size: [6, 3]
+          primary_key [:lat, :lng]
+        end
+
         connection.create_table :users do
           column :id, :serial, primary_key: true
           column :name, :varchar, null: false, unique: true
@@ -55,8 +61,11 @@ RSpec.describe DbSchema::Reader::Postgres do
             Sequel.asc(:age),
             Sequel.desc(Sequel.lit('lower(name)'))
           ], name: :users_expression_index
+          index [:id, :name], unique: true
 
           constraint :is_adult, 'age > 18'
+
+          foreign_key [:lat, :lng], :points, name: :location_fkey
         end
 
         connection.create_table :posts do
@@ -71,12 +80,7 @@ RSpec.describe DbSchema::Reader::Postgres do
 
           foreign_key [:user_id], :users, on_delete: :set_null, deferrable: true
           foreign_key [:user_name], :users, key: [:name], name: :user_name_fkey, on_update: :cascade
-        end
-
-        connection.create_table :points do
-          column :lat, :numeric, size: [6, 3]
-          column :lng, :numeric, size: [6, 3]
-          primary_key [:lat, :lng]
+          foreign_key [:user_id, :user_name], :users, key: [:id, :name], name: :user_id_and_name_fkey
         end
 
         connection.create_table :numbers do
@@ -186,7 +190,7 @@ RSpec.describe DbSchema::Reader::Postgres do
         posts  = schema.table(:posts)
         points = schema.table(:points)
 
-        expect(users.indexes.count).to eq(5)
+        expect(users.indexes.count).to eq(6)
 
         expect(users.index(:users_pkey).columns).to eq([
           DbSchema::Definitions::Index::TableField.new(:id)
@@ -242,9 +246,17 @@ RSpec.describe DbSchema::Reader::Postgres do
       end
 
       it 'reads foreign keys' do
+        users = schema.table(:users)
         posts = schema.table(:posts)
 
-        expect(posts.foreign_keys.count).to eq(2)
+        expect(users.foreign_keys.count).to eq(1)
+
+        location_fkey = users.foreign_key(:location_fkey)
+        expect(location_fkey.fields).to eq([:lat, :lng])
+        expect(location_fkey.table).to eq(:points)
+        expect(location_fkey.references_primary_key?).to eq(true)
+
+        expect(posts.foreign_keys.count).to eq(3)
 
         expect(posts.foreign_key(:posts_user_id_fkey).fields).to eq([:user_id])
         expect(posts.foreign_key(:posts_user_id_fkey).table).to eq(:users)
@@ -259,6 +271,10 @@ RSpec.describe DbSchema::Reader::Postgres do
         expect(posts.foreign_key(:user_name_fkey).on_delete).to eq(:no_action)
         expect(posts.foreign_key(:user_name_fkey).on_update).to eq(:cascade)
         expect(posts.foreign_key(:user_name_fkey)).not_to be_deferrable
+
+        expect(posts.foreign_key(:user_id_and_name_fkey).fields).to eq([:user_id, :user_name])
+        expect(posts.foreign_key(:user_id_and_name_fkey).table).to eq(:users)
+        expect(posts.foreign_key(:user_id_and_name_fkey).keys).to eq([:id, :name])
       end
 
       it 'reads enum types' do
@@ -273,9 +289,9 @@ RSpec.describe DbSchema::Reader::Postgres do
 
       after(:each) do
         connection.drop_table(:numbers)
-        connection.drop_table(:points)
         connection.drop_table(:posts)
         connection.drop_table(:users)
+        connection.drop_table(:points)
         connection.drop_enum(:rainbow)
         connection.run('DROP EXTENSION hstore')
       end
