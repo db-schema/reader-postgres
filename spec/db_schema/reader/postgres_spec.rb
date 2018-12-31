@@ -88,7 +88,7 @@ RSpec.describe DbSchema::Reader::Postgres do
 
       let(:schema) { subject.read_schema }
 
-      it 'reads field information' do
+      fit 'reads field information' do
         users   = schema.table(:users)
         posts   = schema.table(:posts)
         numbers = schema.table(:numbers)
@@ -181,7 +181,7 @@ RSpec.describe DbSchema::Reader::Postgres do
         expect(numbers.field(:big).default).to be_nil
       end
 
-      it 'reads indexes' do
+      fit 'reads indexes' do
         users  = schema.table(:users)
         posts  = schema.table(:posts)
         points = schema.table(:points)

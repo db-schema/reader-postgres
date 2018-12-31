@@ -112,8 +112,16 @@ SELECT extname
       end
 
       def read_tables
-        connection.tables.map do |table_name|
-          Table.new(connection, table_name).read
+        checks_data, foreign_keys_data = constraints_data
+
+        columns_data.keys.map do |table_name|
+          Table.new(
+            table_name.to_sym,
+            columns_data[table_name],
+            indexes_data[table_name],
+            checks_data[table_name],
+            foreign_keys_data[table_name]
+          ).definition
         end
       end
 
@@ -158,7 +166,7 @@ SELECT extname
           index_data.delete(:index_oid)
           index_data.delete(:column_positions)
           index_data.merge(columns: columns)
-        end.group_by { |index| index[:table_name] }
+        end.group_by { |index| index[:table_name] }.tap { |h| h.default = [] }
       end
 
       def index_expressions_data(indexes_data)
@@ -226,7 +234,7 @@ SELECT extname
           end
         end
 
-        { checks: checks, foreign_keys: foreign_keys }
+        [checks, foreign_keys]
       end
 
       def get_field_name(table, position)
