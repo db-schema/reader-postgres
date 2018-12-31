@@ -145,28 +145,30 @@ SELECT extname
       end
 
       def indexes_data
-        raw_data = connection[INDEXES_QUERY].map do |index_data|
-          index_data.merge(
-            column_positions: index_data[:column_positions].split(' ').map(&:to_i),
-            index_options:    index_data[:index_options].split(' ').map(&:to_i)
-          )
-        end
-
-        expressions_data = index_expressions_data(raw_data)
-
-        raw_data.map do |index_data|
-          columns = index_data[:column_positions].map do |position|
-            if position.zero?
-              expressions_data.fetch(index_data[:index_oid]).shift
-            else
-              get_field_name(index_data[:table_name], position)
-            end
+        @indexes_data ||= begin
+          raw_data = connection[INDEXES_QUERY].map do |index_data|
+            index_data.merge(
+              column_positions: index_data[:column_positions].split(' ').map(&:to_i),
+              index_options:    index_data[:index_options].split(' ').map(&:to_i)
+            )
           end
 
-          index_data.delete(:index_oid)
-          index_data.delete(:column_positions)
-          index_data.merge(columns: columns)
-        end.group_by { |index| index[:table_name] }.tap { |h| h.default = [] }
+          expressions_data = index_expressions_data(raw_data)
+
+          raw_data.map do |index_data|
+            columns = index_data[:column_positions].map do |position|
+              if position.zero?
+                expressions_data.fetch(index_data[:index_oid]).shift
+              else
+                get_field_name(index_data[:table_name], position)
+              end
+            end
+
+            index_data.delete(:index_oid)
+            index_data.delete(:column_positions)
+            index_data.merge(columns: columns)
+          end.group_by { |index| index[:table_name] }.tap { |h| h.default = [] }
+        end
       end
 
       def index_expressions_data(indexes_data)
@@ -219,6 +221,12 @@ SELECT extname
             keys = constraint[:confkey].map do |position|
               get_field_name(constraint[:referenced], position)
             end
+
+            pkey_columns = indexes_data.fetch(constraint[:referenced]).find do |index|
+              index[:primary]
+            end.fetch(:columns)
+
+            keys = [] if keys == pkey_columns # this foreign key references a primary key
 
             foreign_keys[constraint[:table_name]] << {
               name:       constraint[:name],
