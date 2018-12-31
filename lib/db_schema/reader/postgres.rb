@@ -30,15 +30,6 @@ LEFT JOIN information_schema.element_types AS e
     WHERE c.table_schema = 'public'
       SQL
 
-      CONSTRAINTS_QUERY = <<-SQL.freeze
-SELECT relname AS table_name,
-       conname AS name,
-       pg_get_expr(conbin, conrelid, true) AS condition
-  FROM pg_constraint, pg_class
- WHERE conrelid = pg_class.oid
-   AND contype = 'c'
-      SQL
-
       INDEXES_QUERY = <<-SQL.freeze
    SELECT table_rel.relname AS table_name,
           pg_class.relname AS name,
@@ -70,6 +61,25 @@ LEFT JOIN pg_am
          array_agg(pg_get_indexdef(index_id, element, 't')) AS definitions
     FROM index_ids, elements
 GROUP BY index_id;
+      SQL
+
+      CONSTRAINTS_QUERY = <<-SQL.freeze
+   SELECT owner_table.relname AS table_name,
+          constr.conname AS name,
+          pg_get_expr(conbin, conrelid, true) AS condition,
+          referenced_table.relname AS referenced,
+          conkey,
+          confkey,
+          confupdtype AS on_update,
+          confdeltype AS on_delete,
+          condeferrable AS deferrable,
+          constr.contype AS type
+     FROM pg_constraint AS constr
+     JOIN pg_class AS owner_table
+       ON owner_table.oid = constr.conrelid
+LEFT JOIN pg_class AS referenced_table
+       ON referenced_table.oid = constr.confrelid
+    WHERE contype IN ('c', 'f');
       SQL
 
       ENUMS_QUERY = <<-SQL.freeze
@@ -141,9 +151,7 @@ SELECT extname
             if position.zero?
               expressions_data.fetch(index_data[:index_oid]).shift
             else
-              columns_data.fetch(index_data[:table_name]).find do |column|
-                column[:pos] == position
-              end.fetch(:name).to_sym
+              get_field_name(index_data[:table_name], position)
             end
           end
 
@@ -182,6 +190,49 @@ SELECT extname
         else
           {}
         end
+      end
+
+      def constraints_data
+        checks       = Hash.new { |h, k| h[k] = [] }
+        foreign_keys = Hash.new { |h, k| h[k] = [] }
+
+        connection[CONSTRAINTS_QUERY].each do |constraint|
+          case constraint[:type]
+          when 'c'
+            checks[constraint[:table_name]] << {
+              name:      constraint[:name],
+              condition: constraint[:condition]
+            }
+          when 'f'
+            fields = constraint[:conkey].map do |position|
+              get_field_name(constraint[:table_name], position)
+            end
+
+            keys = constraint[:confkey].map do |position|
+              get_field_name(constraint[:referenced], position)
+            end
+
+            foreign_keys[constraint[:table_name]] << {
+              name:       constraint[:name],
+              referenced: constraint[:referenced],
+              fields:     fields,
+              keys:       keys,
+              on_update:  constraint[:on_update],
+              on_delete:  constraint[:on_delete],
+              deferrable: constraint[:deferrable]
+            }
+          else
+            raise "Unknown constraint type #{constraint[:type].inspect}"
+          end
+        end
+
+        { checks: checks, foreign_keys: foreign_keys }
+      end
+
+      def get_field_name(table, position)
+        columns_data.fetch(table).find do |column|
+          column[:pos] == position
+        end.fetch(:name).to_sym
       end
     end
   end
