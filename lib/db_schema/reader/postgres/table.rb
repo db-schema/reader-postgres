@@ -22,6 +22,14 @@ module DbSchema
           (?<boolean>true|false)
         )/x
 
+        FKEY_ACTIONS = {
+          a: :no_action,
+          r: :restrict,
+          c: :cascade,
+          n: :set_null,
+          d: :set_default
+        }.freeze
+
 #         COLUMN_NAMES_QUERY = <<-SQL.freeze
 #    SELECT c.column_name AS name,
 #           c.ordinal_position AS pos,
@@ -100,7 +108,13 @@ module DbSchema
         end
 
         def definition
-          Definitions::Table.new(table_name, fields: fields, indexes: indexes)
+          Definitions::Table.new(
+            table_name,
+            fields:       fields,
+            indexes:      indexes,
+            checks:       checks,
+            foreign_keys: foreign_keys
+          )
         end
 
         def fields
@@ -113,6 +127,21 @@ module DbSchema
           indexes_data.map do |index_data|
             build_index(index_data)
           end.sort_by(&:name)
+        end
+
+        def checks
+          checks_data.map do |check_data|
+            Definitions::CheckConstraint.new(
+              name:      check_data[:name].to_sym,
+              condition: check_data[:condition]
+            )
+          end
+        end
+
+        def foreign_keys
+          fkeys_data.map do |foreign_key_data|
+            build_foreign_key(foreign_key_data)
+          end
         end
 
         def read
@@ -333,27 +362,15 @@ module DbSchema
         end
 
         def build_foreign_key(data)
-          keys = if data[:key] == [primary_key_for(data[:table])]
-            [] # this foreign key references a primary key
-          else
-            data[:key]
-          end
-
           Definitions::ForeignKey.new(
-            name:       data[:name],
-            fields:     data[:columns],
-            table:      data[:table],
-            keys:       keys,
-            on_delete:  data[:on_delete],
-            on_update:  data[:on_update],
+            name:       data[:name].to_sym,
+            fields:     data[:fields],
+            table:      data[:referenced].to_sym,
+            keys:       data[:keys],
+            on_update:  FKEY_ACTIONS.fetch(data[:on_update].to_sym),
+            on_delete:  FKEY_ACTIONS.fetch(data[:on_delete].to_sym),
             deferrable: data[:deferrable]
           )
-        end
-
-        def primary_key_for(table_name)
-          if pkey = connection.primary_key(table_name)
-            pkey.to_sym
-          end
         end
 
         # TODO: replace following methods with Transproc
