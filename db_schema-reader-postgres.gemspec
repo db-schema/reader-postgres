@@ -20,7 +20,7 @@ Gem::Specification.new do |spec|
 
   spec.add_runtime_dependency 'sequel'
   spec.add_runtime_dependency 'pg'
-  spec.add_runtime_dependency 'db_schema-definitions', '~> 0.1.0'
+  spec.add_runtime_dependency 'db_schema-definitions', '= 0.2.rc1'
 
   spec.add_development_dependency 'bundler', '~> 1.16'
   spec.add_development_dependency 'rake', '~> 10.0'
