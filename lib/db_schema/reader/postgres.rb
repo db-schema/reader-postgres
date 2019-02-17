@@ -12,6 +12,7 @@ module DbSchema
           c.column_default AS default,
           c.is_nullable AS null,
           c.data_type AS type,
+          c.is_identity,
           c.udt_name AS custom_type_name,
           c.character_maximum_length AS char_length,
           c.numeric_precision AS num_precision,

@@ -30,7 +30,7 @@ RSpec.describe DbSchema::Reader::Postgres do
         end
 
         connection.create_table :users do
-          column :id, :serial, primary_key: true
+          primary_key :id
           column :name, :varchar, null: false, unique: true
           column :email, :varchar, default: 'mail@example.com', size: 250
           column :admin, :boolean, null: false, default: false

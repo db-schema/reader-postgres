@@ -84,10 +84,15 @@ module DbSchema
             type = data[:custom_type_name].to_sym
           end
 
+          serial_type = SERIAL_TYPES[type]
+
           nullable = (data[:null] != 'NO')
 
-          unless data[:default].nil?
-            serial_type = SERIAL_TYPES[type]
+          if data[:is_identity] == 'YES'
+            type     = serial_type
+            nullable = true
+            default  = nil
+          elsif !data[:default].nil?
             serial_field_default = "nextval('#{table_name}_#{data[:name]}_seq'::regclass)"
 
             if !serial_type.nil? && !nullable && data[:default] == serial_field_default
