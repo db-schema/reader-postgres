@@ -89,16 +89,14 @@ module DbSchema
           nullable = (data[:null] != 'NO')
 
           if data[:is_identity] == 'YES'
-            type     = serial_type
-            nullable = true
-            default  = nil
+            type    = serial_type
+            default = nil
           elsif !data[:default].nil?
             serial_field_default = "nextval('#{table_name}_#{data[:name]}_seq'::regclass)"
 
             if !serial_type.nil? && !nullable && data[:default] == serial_field_default
-              type     = serial_type
-              nullable = true
-              default  = nil
+              type    = serial_type
+              default = nil
             else
               default = if match = DEFAULT_VALUE.match(data[:default])
                 if match[:date]

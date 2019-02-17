@@ -96,6 +96,7 @@ RSpec.describe DbSchema::Reader::Postgres do
         users   = schema.table(:users)
         posts   = schema.table(:posts)
         numbers = schema.table(:numbers)
+        points  = schema.table(:points)
 
         expect(users.field(:id).type).to eq(:serial)
 
@@ -173,16 +174,19 @@ RSpec.describe DbSchema::Reader::Postgres do
         expect(posts.field(:created_at).type).to eq(:timetz)
 
         expect(numbers.field(:small).type).to eq(:smallserial)
-        expect(numbers.field(:small)).to be_null
+        expect(numbers.field(:small)).not_to be_null
         expect(numbers.field(:small).default).to be_nil
 
         expect(numbers.field(:medium).type).to eq(:serial)
-        expect(numbers.field(:medium)).to be_null
+        expect(numbers.field(:medium)).not_to be_null
         expect(numbers.field(:medium).default).to be_nil
 
         expect(numbers.field(:big).type).to eq(:bigserial)
-        expect(numbers.field(:big)).to be_null
+        expect(numbers.field(:big)).not_to be_null
         expect(numbers.field(:big).default).to be_nil
+
+        expect(points.field(:lat)).not_to be_null
+        expect(points.field(:lng)).not_to be_null
       end
 
       it 'reads indexes' do
