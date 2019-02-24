@@ -44,15 +44,12 @@ reader.read_schema
 # => #<DbSchema::Definitions::Schema ...>
 ```
 
-Other useful methods are `#read_tables`, `#read_table`, `#read_enums` & `#read_extensions`;
+Other useful methods are `#read_tables`, `#read_enums` & `#read_extensions`;
 they return definitions of respective parts of the database schema:
 
 ``` ruby
 reader.read_tables
 # => [#<DbSchema::Definitions::Table ...>, #<DbSchema::Definitions::Table ...>, ...]
-
-reader.read_table(:users)
-# => #<DbSchema::Definitions::Table name=:users ...>
 
 reader.read_enums
 # => [#<DbSchema::Definitions::Enum ...>, #<DbSchema::Definitions::Enum ...>, ...]
