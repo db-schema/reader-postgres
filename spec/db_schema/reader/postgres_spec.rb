@@ -291,6 +291,20 @@ RSpec.describe DbSchema::Reader::Postgres do
         expect(schema).to have_extension(:hstore)
       end
 
+      context 'with views in the database' do
+        before(:each) do
+          connection.create_view :north_points, 'SELECT * FROM points WHERE lat >= 0'
+        end
+
+        it 'ignores them' do
+          expect(schema.tables.count).to eq(4)
+        end
+
+        after(:each) do
+          connection.drop_view :north_points
+        end
+      end
+
       after(:each) do
         connection.drop_table(:numbers)
         connection.drop_table(:posts)

@@ -5,6 +5,13 @@ require_relative 'postgres/version'
 module DbSchema
   module Reader
     class Postgres
+      TABLES_QUERY = <<-SQL.freeze
+SELECT table_name
+  FROM information_schema.tables
+ WHERE table_type = 'BASE TABLE'
+   AND table_schema = 'public'
+      SQL
+
       COLUMNS_QUERY = <<-SQL.freeze
    SELECT c.table_name,
           c.column_name AS name,
@@ -115,7 +122,7 @@ SELECT extname
       def read_tables
         checks_data, foreign_keys_data = constraints_data
 
-        columns_data.keys.map do |table_name|
+        table_names.map do |table_name|
           Table.new(
             table_name.to_sym,
             columns_data[table_name],
@@ -139,6 +146,10 @@ SELECT extname
       end
 
     private
+      def table_names
+        @table_names ||= connection[TABLES_QUERY].to_a.map { |row| row[:table_name] }
+      end
+
       def columns_data
         @columns_data ||= connection[COLUMNS_QUERY].to_a.group_by do |column|
           column[:table_name]
