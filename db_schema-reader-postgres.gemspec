@@ -9,7 +9,7 @@ Gem::Specification.new do |spec|
   spec.email         = ['7@7vn.ru']
 
   spec.summary       = 'Database schema reader for PostgreSQL'
-  spec.description   = 'A database structure reader for PostgreSQL with support for tables, fields, indexes, foreign keys, check constraints, enum types and extensions.'
+  spec.description   = 'A database structure reader for PostgreSQL with support for tables, fields, primary keys, indexes, foreign keys, check constraints, enum types and extensions.'
   spec.homepage      = 'https://github.com/db-schema/reader-postgres'
   spec.license       = 'MIT'
 
@@ -20,7 +20,7 @@ Gem::Specification.new do |spec|
 
   spec.add_runtime_dependency 'sequel'
   spec.add_runtime_dependency 'pg'
-  spec.add_runtime_dependency 'db_schema-definitions', '= 0.2.rc1'
+  spec.add_runtime_dependency 'db_schema-definitions', '~> 0.2.0'
 
   spec.add_development_dependency 'bundler', '~> 1.16'
   spec.add_development_dependency 'rake', '~> 10.0'

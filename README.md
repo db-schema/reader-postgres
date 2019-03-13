@@ -1,4 +1,4 @@
-# DbSchema::Reader::Postgres [![Build Status](https://travis-ci.org/db-schema/reader-postgres.svg?branch=master)](https://travis-ci.org/db-schema/reader-postgres)
+# DbSchema::Reader::Postgres [![Build Status](https://travis-ci.org/db-schema/reader-postgres.svg?branch=master)](https://travis-ci.org/db-schema/reader-postgres) [![Gem Version](https://badge.fury.io/rb/db_schema-reader-postgres.svg)](https://badge.fury.io/rb/db_schema-reader-postgres)
 
 DbSchema::Reader::Postgres is a library for reading the database
 structure from PostgreSQL.
