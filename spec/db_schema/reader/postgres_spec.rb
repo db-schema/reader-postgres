@@ -29,6 +29,10 @@ RSpec.describe DbSchema::Reader::Postgres do
           primary_key [:lat, :lng]
         end
 
+        connection.create_table :countries do
+          column :code, :varchar, unique: true
+        end
+
         connection.create_table :users do
           primary_key :id
           column :name, :varchar, null: false, unique: true
@@ -48,6 +52,7 @@ RSpec.describe DbSchema::Reader::Postgres do
           column :numbers, 'integer[]'
           column :color, :rainbow, default: 'red'
           column :previous_colors, 'rainbow[]', default: []
+          column :country_code, :varchar
 
           index [
             :email,
@@ -66,6 +71,7 @@ RSpec.describe DbSchema::Reader::Postgres do
           constraint :is_adult, 'age > 18'
 
           foreign_key [:lat, :lng], :points, name: :location_fkey
+          foreign_key [:country_code], :countries, key: [:code]
         end
 
         connection.create_table :posts do
@@ -253,12 +259,18 @@ RSpec.describe DbSchema::Reader::Postgres do
         users = schema.table(:users)
         posts = schema.table(:posts)
 
-        expect(users.foreign_keys.count).to eq(1)
+        expect(users.foreign_keys.count).to eq(2)
 
         location_fkey = users.foreign_key(:location_fkey)
         expect(location_fkey.fields).to eq([:lat, :lng])
         expect(location_fkey.table).to eq(:points)
         expect(location_fkey.references_primary_key?).to eq(true)
+
+        country_fkey = users.foreign_key(:users_country_code_fkey)
+        expect(country_fkey.fields).to eq([:country_code])
+        expect(country_fkey.table).to eq(:countries)
+        expect(country_fkey.keys).to eq([:code])
+        expect(country_fkey.references_primary_key?).to eq(false)
 
         expect(posts.foreign_keys.count).to eq(3)
 
@@ -297,7 +309,7 @@ RSpec.describe DbSchema::Reader::Postgres do
         end
 
         it 'ignores them' do
-          expect(schema.tables.count).to eq(4)
+          expect(schema.tables.count).to eq(5)
         end
 
         after(:each) do
@@ -310,6 +322,7 @@ RSpec.describe DbSchema::Reader::Postgres do
         connection.drop_table(:posts)
         connection.drop_table(:users)
         connection.drop_table(:points)
+        connection.drop_table(:countries)
         connection.drop_enum(:rainbow)
         connection.run('DROP EXTENSION hstore')
       end

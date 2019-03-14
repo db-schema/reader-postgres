@@ -234,11 +234,8 @@ SELECT extname
               get_field_name(constraint[:referenced], position)
             end
 
-            pkey_columns = indexes_data.fetch(constraint[:referenced]).find do |index|
-              index[:primary]
-            end.fetch(:columns)
-
-            keys = [] if keys == pkey_columns # this foreign key references a primary key
+            pkey = indexes_data.fetch(constraint[:referenced]).find { |index| index[:primary] }
+            keys = [] if !pkey.nil? && keys == pkey.fetch(:columns) # this foreign key references a primary key
 
             foreign_keys[constraint[:table_name]] << {
               name:       constraint[:name],
